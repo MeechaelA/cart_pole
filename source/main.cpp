@@ -16,7 +16,7 @@ int main(int argc, char *argv[])
     /*...*/
 
     Simulation simulation = Simulation();
-    simulation.start(100000000);
+    simulation.start(1000000000);
 
 
 

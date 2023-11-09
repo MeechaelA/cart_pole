@@ -8,6 +8,7 @@
 #include "cart_pole.hpp"
 #include "riccati_solver.hpp"
 #include <cmath>
+#include <iomanip>
 
 #define PRINT_MAT(X) std::cout << #X << ":\n" << X << std::endl << std::endl
 
@@ -21,6 +22,7 @@ Simulation::~Simulation(){};
 void Simulation::start(unsigned int end_iteration){
     std::ofstream outfile;
     outfile.open("output.csv");
+
     this->end_iteration = end_iteration;
 
 
@@ -86,10 +88,13 @@ void Simulation::start(unsigned int end_iteration){
 
     double force = 0.0;
     double time = 0.0;
-    double time_delta = 1e-9;
+    double time_delta = 0.0001;
     double time_prev = 0.0;
 
-    while(iteration < end_iteration){        
+    outfile.precision(12);
+    outfile <<  "time" << "," << "cart_accel" << "," << "cart_vel" << "," << "cart_dis" << "," << "pole_accel" << "," << "pole_vel" << "," << "pole_dis" << "," <<  "force" << std::endl;
+
+    while(iteration < end_iteration){
         A(0, 0) = 0.0;
         A(0, 1) = 1.0;
         A(0, 2) = 0.0;
