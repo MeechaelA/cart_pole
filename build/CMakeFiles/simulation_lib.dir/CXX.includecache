@@ -1,0 +1,20 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+../include/cart_pole.hpp
+
+../include/simulation.hpp
+
+/workspaces/cart_pole/source/simulation.cpp
+iostream
+-
+simulation.hpp
+/workspaces/cart_pole/source/simulation.hpp
+cart_pole.hpp
+/workspaces/cart_pole/source/cart_pole.hpp
+
