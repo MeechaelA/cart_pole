@@ -1,6 +1,0 @@
-[submodule "dependencies/kindr"]
-	path = dependencies/kindr
-	url = https://github.com/ANYbotics/kindr.git
-[submodule "dependencies/control-toolbox"]
-	path = dependencies/control-toolbox
-	url = https://github.com/ethz-adrl/control-toolbox.git
