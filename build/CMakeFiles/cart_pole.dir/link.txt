@@ -1,1 +1,0 @@
-/usr/bin/c++     CMakeFiles/cart_pole.dir/source/main.cpp.o  -o cart_pole  libsimulation_lib.a libcart_pole_lib.a 

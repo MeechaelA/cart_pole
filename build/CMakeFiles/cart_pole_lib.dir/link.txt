@@ -1,2 +1,0 @@
-/usr/bin/ar qc libcart_pole_lib.a  CMakeFiles/cart_pole_lib.dir/source/cart_pole.cpp.o
-/usr/bin/ranlib libcart_pole_lib.a
