@@ -5,8 +5,7 @@ from plotter import Plotter
 def main():
     args = sys.argv[1:]
     plotter = Plotter()
-    plotter.open_file(args[0])
-    plotter.plot()
+    plotter.plot_monte_carlo(args[0])
 
 if __name__ == "__main__":
     main()

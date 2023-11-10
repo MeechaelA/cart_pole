@@ -1,11 +1,21 @@
 #ifndef SIMULATION_HPP
 #define SIMULATION_HPP
 
+#include <iostream>
+#include <fstream>
+#include <Eigen/Dense>
+#include <time.h>
+#include <vector>
+#include "cart_pole.hpp"
+#include "riccati_solver.hpp"
+#include <cmath>
+#include <iomanip>
+
 class Simulation{
     public:
         Simulation();
         ~Simulation();
-        void start(unsigned int end_iteration);
+        void start(std::string id, double end_time, unsigned int end_iteration, Eigen::MatrixXd Q, Eigen::MatrixXd R);
 
     private:
         unsigned int iteration;

@@ -1,14 +1,4 @@
-
-#include <iostream>
-#include <fstream>
-#include <Eigen/Dense>
-#include <time.h>
-#include <vector>
 #include "simulation.hpp"
-#include "cart_pole.hpp"
-#include "riccati_solver.hpp"
-#include <cmath>
-#include <iomanip>
 
 #define PRINT_MAT(X) std::cout << #X << ":\n" << X << std::endl << std::endl
 
@@ -19,16 +9,16 @@ Simulation::Simulation(){
 
 Simulation::~Simulation(){};
 
-void Simulation::start(unsigned int end_iteration){
+void Simulation::start(std::string id, double end_time, unsigned int end_iteration, Eigen::MatrixXd Q, Eigen::MatrixXd R){
     std::ofstream outfile;
-    outfile.open("output.csv");
+    outfile.open(id + ".csv");
 
     this->end_iteration = end_iteration;
 
 
 
-    const uint dim_x = 4;
-    const uint dim_u = 1;
+    uint dim_x = 4;
+    uint dim_u = 1;
 
     Eigen::MatrixXd X = Eigen::MatrixXd::Zero(dim_x, dim_u);
     Eigen::MatrixXd X_prev = Eigen::MatrixXd::Zero(dim_x, dim_u);
@@ -37,8 +27,6 @@ void Simulation::start(unsigned int end_iteration){
     Eigen::MatrixXd X_desired = Eigen::MatrixXd::Zero(dim_x, dim_u);
     Eigen::MatrixXd A = Eigen::MatrixXd::Zero(dim_x, dim_x);
     Eigen::MatrixXd B = Eigen::MatrixXd::Zero(dim_x, dim_u);
-    Eigen::MatrixXd Q = Eigen::MatrixXd::Zero(dim_x, dim_x);
-    Eigen::MatrixXd R = Eigen::MatrixXd::Zero(dim_u, dim_u);
     Eigen::MatrixXd P = Eigen::MatrixXd::Zero(dim_x, dim_x);
     Eigen::MatrixXd K_continous = Eigen::MatrixXd::Zero(dim_x, dim_x);
     Eigen::MatrixXd K_discrete = Eigen::MatrixXd::Zero(dim_x, dim_x);
@@ -88,13 +76,13 @@ void Simulation::start(unsigned int end_iteration){
 
     double force = 0.0;
     double time = 0.0;
-    double time_delta = 0.0001;
+    double time_delta = 0.01;
     double time_prev = 0.0;
 
     outfile.precision(12);
     outfile <<  "time" << "," << "cart_accel" << "," << "cart_vel" << "," << "cart_dis" << "," << "pole_accel" << "," << "pole_vel" << "," << "pole_dis" << "," <<  "force" << std::endl;
-
-    while(iteration < end_iteration){
+    
+    while(this->iteration < this->end_iteration){
         A(0, 0) = 0.0;
         A(0, 1) = 1.0;
         A(0, 2) = 0.0;
@@ -120,12 +108,7 @@ void Simulation::start(unsigned int end_iteration){
         B(2, 0) = b / cart_pole.cart_mass*cart_pole.pole_length;
         B(3, 0) = 1.0;
 
-        Q(0, 0) = 1.0;
-        Q(1, 1) = 1.0;
-        Q(2, 2) = 10.0;
-        Q(3, 3) = 100.0;
 
-        R(0, 0) = 0.001;
 
         double pole_dis_cos = cos(pole_dis);
         double pole_dis_sin = sin(pole_dis);
@@ -146,6 +129,7 @@ void Simulation::start(unsigned int end_iteration){
 
         /* == eigen decomposition method (Arimoto-Potter algorithm) == */
         clock_t start = clock();
+        
         solveRiccatiArimotoPotter(A, B, Q, R, P);
         
         K_continous = R.inverse() * B.transpose()*P;
@@ -162,11 +146,12 @@ void Simulation::start(unsigned int end_iteration){
         X(2) = pole_dis;
         X(3) = pole_vel;
 
-        u = -K_discrete * (X);
+        u = -1.0*K_discrete * (X-X_desired);
+        
         force = u(0);
 
-        if (time > 30.0){
-            iteration = end_iteration;
+        if (time > end_time){
+            this->iteration = this->end_iteration;
         }
 
         cart_accel_prev = cart_accel;
@@ -178,6 +163,6 @@ void Simulation::start(unsigned int end_iteration){
 
         time_prev = time;
         time = time + time_delta;
-        iteration++;
+        this->iteration++;
     }
 };
