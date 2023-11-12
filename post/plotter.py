@@ -212,18 +212,19 @@ class GUIPlotter(MultiPlotter):
             cart.set_positions(self.data[simulation]["cart_dis_linear"])
             self.carts.append(cart)
 
-            pole = Pole(self.data[simulation]["pole_dis"][0], y_offset,  pole_width, pole_length)
-            pole.set_x_offset(x_offset)
+            pole = Pole(self.data[simulation]["cart_dis"][0], y_offset,  pole_width, pole_length)
+            pole.set_x_offset(x_offset- pole_width / 2.0)
             pole.set_y_offset(y_offset)
             pole.set_width(pole_width)
             pole.set_length(pole_length)
             pole.set_times(self.data[simulation]["time"])
             pole.set_move_scale(move_scale)
             pole.set_origin(x_offset, y_offset)
+            pole.set_rotations(self.data[simulation]["pole_dis_linear"])
             pole.set_positions(self.data[simulation]["cart_dis_linear"])
             self.poles.append(pole)
 
-            circle = Circle(self.data[simulation]["pole_dis"][0], y_offset, mass_radius)
+            circle = Circle(self.data[simulation]["cart_dis"][0], y_offset, mass_radius)
             circle.set_x_offset(x_offset - mass_radius/ 2.0)
             circle.set_y_offset(y_offset)
             circle.set_radius(mass_radius)
@@ -397,15 +398,23 @@ class Pole(QGraphicsRectItem):
         self._animation.valueChanged.connect(self.setPos)
         self._animation.finished.connect(self.create_random_point)
         
-        self.current_iteration = 0
         self.times=[]
+        self.times_ms = []
         self.positions = []
+        self.position = 0
+        self.rotations = []
+        self.rotation = 0 
+        self.rotation_value = 0
+        self.iteration = 0
 
+        self.x = 0
+        self.y = 0
         self.x_offset = 0
         self.y_offset = 0 
         self.width = 0
         self.length = 0
         self.move_scale = 1
+        self.transform = QTransform()
 
 
     def create_random_point(self):
@@ -427,6 +436,9 @@ class Pole(QGraphicsRectItem):
     def set_positions(self, positions):
         self.positions = positions
 
+    def set_rotations(self, rotations):
+        self.rotations = rotations
+
     def set_times(self, times):
         self.times = times
         time_min = min(self.times)
@@ -437,8 +449,22 @@ class Pole(QGraphicsRectItem):
             norm_time = (value - time_min) / (time_max - time_min)
             self._animation.setKeyValueAt(norm_time, self)
 
+
+
     def set_iteration(self, iteration):
-        self.setPos(self.move_scale * self.positions[iteration] - self.width / 2.0, self.width)
+        print(self.rotation)
+        #self.transform.translate(-self.position, 0.0)
+
+        self.transform.rotateRadians(-self.rotation )
+        self.rotation = self.rotations[iteration] + math.pi
+        self.transform.rotateRadians(self.rotation)
+        self.setTransform(self.transform)
+
+        self.setPos(self.x_offset+self.positions[iteration], self.y_offset + self.width/4.0)
+
+
+
+
 
     def set_x_offset(self, x_offset):
         self.x_offset = x_offset
@@ -456,9 +482,10 @@ class Pole(QGraphicsRectItem):
         self.move_scale = move_scale
 
     def set_origin(self, x, y):
-        transform = QTransform()
-        transform.translate(x, y)
-        self.setTransform(transform)        
+        self.x_origin = self.width #self.width / 4.0
+        self.y_origin = self.width #self.length / 5.0
+        self.transform.translate(self.x_origin, self.y_origin)
+        self.setTransform(self.transform)    
 
 
 class Circle(QGraphicsEllipseItem):
@@ -476,7 +503,9 @@ class Circle(QGraphicsEllipseItem):
         self.times=[]
         self.times_ms = []
         self.positions = []
+        self.position = 0
         self.rotations = []
+        self.rotation = 0 
         self.rotation_value = 0
         self.iteration = 0
 
@@ -532,23 +561,32 @@ class Circle(QGraphicsEllipseItem):
         self.y_offset = y_offset
 
     def set_iteration(self, iteration):
-        # + x_offset - mass_radius / 2.0, y_offset + pole_length, mass_radius)
-        self.set_rotation(self.x_origin+3*self.radius, self.y_origin+3*self.radius, self.rotations[iteration] + math.pi/2 + math.pi - math.pi/4)
-        self.x = self.x_origin + self.move_scale * self.positions[iteration] + self.x_rotation 
-        self.y = self.y_origin + self.y_rotation
-        self.setPos(self.x, self.y)
-       
+        radius = 60
+        self.transform.translate(-self.x, -self.y)
+        self.setTransform(self.transform)
+
+        self.x = self.positions[iteration] + radius * math.cos(self.rotations[iteration] - math.pi / 2.0)
+        self.y = radius * math.sin(self.rotations[iteration] - math.pi / 2.0)
+ 
+        self.transform.translate(self.x, self.y)
+        self.setTransform(self.transform)
+        
 
     def set_move_scale(self, move_scale):
         self.move_scale = move_scale
 
     def set_origin(self, x, y):
-        self.x_origin = x/2.0
-        self.y_origin = y/2.0
-        # self.transform.translate(self.x_origin, self.y_origin)
-        # self.setTransform(self.transform)        
+        self.x_origin = x
+        self.y_origin = 0.0
+        self.transform.translate(self.x_origin, self.y_origin)
+        self.setTransform(self.transform)
 
-    def set_rotation(self, x_location, y_location, rotation):
-        self.x_rotation = self.x_origin + (x_location - self.x_origin) * math.cos(rotation) - (y_location - self.y_origin) * math.sin(rotation)
-        self.y_rotation = self.y_origin + (y_location - self.x_origin) * math.sin(rotation) + (y_location - self.y_origin) * math.cos(rotation)
+    def set_rotation(self, rotation):
+        self.transform.rotateRadians(-1.0*self.rotation)
+        self.setTransform(self.transform)
+        self.rotation = rotation
+        self.transform.rotateRadians(self.rotation)
+        self.setTransform(self.transform)
+        # self.x_rotation = self.x_origin + (x_location - self.x_origin) * math.cos(rotation) - (y_location - self.y_origin) * math.sin(rotation)
+        # self.y_rotation = self.y_origin + (y_location - self.x_origin) * math.sin(rotation) + (y_location - self.y_origin) * math.cos(rotation)
         

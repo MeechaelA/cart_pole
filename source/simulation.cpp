@@ -41,10 +41,6 @@ void Simulation::start(std::string id, double end_time, unsigned int end_iterati
 
     this->end_iteration = end_iteration;
 
-
-
-
-
     uint dim_x = 4;
     uint dim_u = 1;
 
@@ -62,7 +58,7 @@ void Simulation::start(std::string id, double end_time, unsigned int end_iterati
 
     X(0) = 0.0;
     X(1) = 0.0;
-    X(2) = -3.14159/2.0;
+    X(2) = 3.14159;
     X(3) = 0.0;
     X_prev = X;
 
@@ -87,7 +83,7 @@ void Simulation::start(std::string id, double end_time, unsigned int end_iterati
     cart_pole.pole_length = 1.0;
     double b = 1.0;
     
-    double pole_dis = -3.14159/2.0;
+    double pole_dis = 3.14159;
     double cart_dis = 0.0;
     double pole_vel = 0.0;
     double cart_vel = 0.0;
@@ -160,7 +156,6 @@ void Simulation::start(std::string id, double end_time, unsigned int end_iterati
 
         pole_vel = ((pole_accel + pole_accel_prev) / 2.0 * (time - time_prev));
         pole_dis = ((pole_vel + pole_vel_prev) / 2.0 * (time - time_prev));
-
 
         u = -1.0*K * (X - X_desired);
         // X(0) = cart_dis;
