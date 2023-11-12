@@ -6,9 +6,10 @@
 #include "simulation.hpp"
 #include <vector>
 
-std::vector<double> double_range(int start, int end, double step){
+std::vector<double> double_range(double start, double end, int total){
     std::vector<double> values;
-    for (int i=start; i < end; i++){
+    double step = (end-start)/total;
+    for (int i=1; i <= total; i++){
         values.push_back(i*step);
     }
     return values;
@@ -25,15 +26,23 @@ int main(int argc, char *argv[]){
 
 
     std::cout << "Simulation Started" << std::endl;
+    // Command to start simulation
+    // 
+    // ./cart_pole 10 10 0.001 100.0
+    // [num_threads num_simulations start_r end_r end_time]
+
     int num_threads = std::stoi(argv[1]);
+    int num_simulations = std::stoi(argv[2]);
+    double start_r = std::stod(argv[3]);
+    double end_r = std::stod(argv[4]);
+    double end_time = std::stod(argv[5]);
+
+
     omp_set_num_threads(num_threads);
 
     int end_iteration = 100000;
-    double end_time = 10.0;
 
-    std::vector<double> r_values = double_range(1, 100, 0.0001);
-    int num_simulations = r_values.size();
-    std::cout << "Num Sims: " << num_simulations << std::endl;
+    std::vector<double> r_values = double_range(start_r, end_r, num_simulations);
 
     #pragma omp parallel //num_threads(num_threads)
     {
@@ -46,10 +55,10 @@ int main(int argc, char *argv[]){
                 unsigned int dim_u = 1;
                 Eigen::MatrixXd Q = Eigen::MatrixXd::Zero(dim_x, dim_x);
                 Eigen::MatrixXd R = Eigen::MatrixXd::Zero(dim_u, dim_u);
-                Q(0, 0) = 1.0;
+                Q(0, 0) = 100.0;
                 Q(1, 1) = 1.0;
-                Q(2, 2) = 1.0;
-                Q(3, 3) = 10.0;
+                Q(2, 2) = 100.0;
+                Q(3, 3) = 1.0;
                 R(0, 0) = r_values[i];
 
                 Simulation simulation = Simulation();
