@@ -25,6 +25,8 @@ struct TrajectoryStatus{
 
 int main(int argc, char *argv[]){
 
+    // mpirun -np 4 ./cart_pole 10 10 0.001 100 25.0
+
 
     int numprocs,rank;
 
