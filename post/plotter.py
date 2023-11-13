@@ -117,6 +117,7 @@ from PyQt6.QtWidgets import QGraphicsTransform, QPushButton, QSlider, QFileDialo
 from PyQt6.QtCore import Qt, QPointF, QTimer, QVariantAnimation
 from PyQt6.QtGui import QColor, QBrush, QTransform
 
+
 class GUIPlotter(MultiPlotter):
     def __init__(self):
         self.study_dir = ''
@@ -155,7 +156,7 @@ class GUIPlotter(MultiPlotter):
 
 
         self.iteration_slider = QSlider()
-        print(self.norm_times[-1])     
+        # print(self.norm_times[-1])     
         self.iteration_slider.setMinimum(0)
         self.iteration_slider.setTickInterval(1)
         self.iteration_slider.setMaximum(len(self.times)-1)
@@ -187,20 +188,18 @@ class GUIPlotter(MultiPlotter):
             self.plots_layout.addWidget(i)
 
     def generate_cartpole(self):
-        cart_width = 20
-        cart_height = 20
-        mass_radius = 20
+        cart_width = 60
+        cart_height = 60
+        mass_radius = 50
         pole_length = 3 * cart_height
         pole_width = cart_width / 2.0
         move_scale = 1.0
 
         self.scale_times(self.data[list(self.data.keys())[0]]["time"])
-
+        x_offset = self.graphics_view.size().width() / 2
+        y_offset = self.graphics_view.size().height() / 2
         for (i, simulation) in enumerate(self.data.keys()):
-
-            x_offset = self.graphics_view.size().width() / 2
-            y_offset = self.graphics_view.size().height() / 2
-
+            print(i)
             cart = Cart(self.data[simulation]["cart_dis"][0], y_offset, cart_width, cart_height)
             cart.set_x_offset(x_offset)
             cart.set_y_offset(y_offset)
@@ -235,9 +234,9 @@ class GUIPlotter(MultiPlotter):
             circle.set_positions(self.data[simulation]["cart_dis_linear"])
             self.balls.append(circle)
 
-            self.graphics_view.scene().addItem(cart)
             self.graphics_view.scene().addItem(pole)
             self.graphics_view.scene().addItem(circle)
+            self.graphics_view.scene().addItem(cart)
 
     def set_iteration(self, iteration):
         self.iteration = iteration
@@ -279,7 +278,7 @@ class GUIPlotter(MultiPlotter):
 
         scene = QGraphicsScene(self.graphics_view)
         self.graphics_view.setScene(scene)
-        self.graphics_view.setSceneRect(0, 0, 600, 600)
+        self.graphics_view.setSceneRect(0, 0, 960, 720)
 
         animation_layout.addWidget(self.graphics_view)
 
@@ -304,7 +303,7 @@ class GUIPlotter(MultiPlotter):
         self.times_ms = [time * 100 for time in self.times]
         for (i, value) in enumerate(self.times):
             self.norm_times.append((value - time_min) / (time_max - time_min))
-        print(self.norm_times)
+        # print(self.norm_times)
 
 class Cart(QGraphicsRectItem):
     def __init__(self, x, y, width, height):
@@ -313,13 +312,10 @@ class Cart(QGraphicsRectItem):
 
         self.setPos(x, y)
         brush = QBrush()
-        brush.setColor(Qt.GlobalColor.black)
+        brush.setColor(Qt.GlobalColor.green)
+        brush.setStyle(Qt.BrushStyle.SolidPattern)
         self.setBrush(brush)
 
-        self._animation = QVariantAnimation(duration=1000)
-        self._animation.valueChanged.connect(self.setPos)
-        self._animation.finished.connect(self.create_random_point)
-        
         self.current_iteration = 0
         self.times=[]
         self.positions = []
@@ -331,21 +327,6 @@ class Cart(QGraphicsRectItem):
         self.move_scale = 1
 
 
-    def create_random_point(self):
-        self._animation.setStartValue(self.pos())
-        self._animation.setEndValue(QPointF(self.positions[self.iteration], self.pos().y()))
-        self._animation.start()
-        self.iteration += 1
-
-    def itemChange(self, change, value):
-        if change == QGraphicsItem.GraphicsItemChange.ItemPositionHasChanged:
-            brush = QBrush()
-            if self.collidingItems():
-                brush.setColor(Qt.GlobalColor.blue)
-            else:
-                brush.setColor(Qt.GlobalColor.black)
-            self.setBrush(brush)
-        return super().itemChange(change, value)
 
     def set_positions(self, positions):
         self.positions = positions
@@ -356,9 +337,7 @@ class Cart(QGraphicsRectItem):
         time_max = max(self.times)
         self.times_ms = [time * 100 for time in self.times]
         for (i, value) in enumerate(self.times):
-            self._animation.setDuration(math.ceil(self.times_ms[i]))
             norm_time = (value - time_min) / (time_max - time_min)
-            self._animation.setKeyValueAt(norm_time, self)
 
     def set_iteration(self, iteration):
         self.setPos(self.move_scale * self.positions[iteration] - self.width / 2.0, 0)
@@ -391,12 +370,10 @@ class Pole(QGraphicsRectItem):
 
         self.setPos(x, y)
         brush = QBrush()
-        brush.setColor(Qt.GlobalColor.black)
+        brush.setColor(Qt.GlobalColor.blue)
+        brush.setStyle(Qt.BrushStyle.SolidPattern)
         self.setBrush(brush)
 
-        self._animation = QVariantAnimation(duration=1000)
-        self._animation.valueChanged.connect(self.setPos)
-        self._animation.finished.connect(self.create_random_point)
         
         self.times=[]
         self.times_ms = []
@@ -417,22 +394,6 @@ class Pole(QGraphicsRectItem):
         self.transform = QTransform()
 
 
-    def create_random_point(self):
-        self._animation.setStartValue(self.pos())
-        self._animation.setEndValue(QPointF(self.positions[self.iteration], self.pos().y()))
-        self._animation.start()
-        self.iteration += 1
-
-    def itemChange(self, change, value):
-        if change == QGraphicsItem.GraphicsItemChange.ItemPositionHasChanged:
-            brush = QBrush()
-            if self.collidingItems():
-                brush.setColor(Qt.GlobalColor.blue)
-            else:
-                brush.setColor(Qt.GlobalColor.black)
-            self.setBrush(brush)
-        return super().itemChange(change, value)
-
     def set_positions(self, positions):
         self.positions = positions
 
@@ -445,14 +406,12 @@ class Pole(QGraphicsRectItem):
         time_max = max(self.times)
         self.times_ms = [time * 100 for time in self.times]
         for (i, value) in enumerate(self.times):
-            self._animation.setDuration(math.ceil(self.times_ms[i]))
             norm_time = (value - time_min) / (time_max - time_min)
-            self._animation.setKeyValueAt(norm_time, self)
 
 
 
     def set_iteration(self, iteration):
-        print(self.rotation)
+        # print(self.rotation)
         #self.transform.translate(-self.position, 0.0)
 
         self.transform.rotateRadians(-self.rotation )
@@ -495,7 +454,8 @@ class Circle(QGraphicsEllipseItem):
 
         self.setPos(x, y)
         brush = QBrush()
-        brush.setColor(Qt.GlobalColor.black)
+        brush.setColor(Qt.GlobalColor.red)
+        brush.setStyle(Qt.BrushStyle.SolidPattern)
         self.setBrush(brush)
 
         self._animation = QVariantAnimation()
@@ -519,22 +479,6 @@ class Circle(QGraphicsEllipseItem):
         self.move_scale = 1
         self.transform = QTransform()
 
-    def create_random_point(self):
-        self._animation.setStartValue(self.pos())
-        self._animation.setEndValue(QPointF(self.positions[self.iteration], self.pos().y()))
-        self._animation.start()
-        self.iteration += 1
-
-    def itemChange(self, change, value):
-        if change == QGraphicsItem.GraphicsItemChange.ItemPositionHasChanged:
-            brush = QBrush()
-            if self.collidingItems():
-                brush.setColor(Qt.GlobalColor.blue)
-            else:
-                brush.setColor(Qt.GlobalColor.black)
-            self.setBrush(brush)
-        return super().itemChange(change, value)
-
     def set_positions(self, positions):
         self.positions = positions
 
@@ -547,9 +491,7 @@ class Circle(QGraphicsEllipseItem):
         time_max = max(self.times)
         self.times_ms = [time * 100 for time in self.times]
         for (i, value) in enumerate(self.times):
-            self._animation.setDuration(math.ceil(self.times_ms[i]))
             norm_time = (value - time_min) / (time_max - time_min)
-            self._animation.setKeyValueAt(norm_time, self)
 
     def set_radius(self, radius):
         self.radius = radius
@@ -561,7 +503,7 @@ class Circle(QGraphicsEllipseItem):
         self.y_offset = y_offset
 
     def set_iteration(self, iteration):
-        radius = 60
+        radius = 180
         self.transform.translate(-self.x, -self.y)
         self.setTransform(self.transform)
 

@@ -35,7 +35,7 @@ void solveRiccati(Eigen::MatrixXd &A, Eigen::MatrixXd &B,
     K = R.inverse() * B.transpose() * P;
 }
 
-void Simulation::start(std::string id, double end_time, unsigned int end_iteration, Eigen::MatrixXd Q, Eigen::MatrixXd R){
+bool Simulation::start(std::string id, double end_time, unsigned int end_iteration, Eigen::MatrixXd Q, Eigen::MatrixXd R, Eigen::MatrixXd desired_state){
     std::ofstream outfile;
     outfile.open(id + ".csv");
 
@@ -48,7 +48,6 @@ void Simulation::start(std::string id, double end_time, unsigned int end_iterati
     Eigen::MatrixXd X_prev = Eigen::MatrixXd::Zero(dim_x, dim_u);
     Eigen::MatrixXd X_dot = Eigen::MatrixXd::Zero(dim_x, dim_u);
     Eigen::MatrixXd X_dot_prev = Eigen::MatrixXd::Zero(dim_x, dim_u);
-    Eigen::MatrixXd X_desired = Eigen::MatrixXd::Zero(dim_x, dim_u);
     Eigen::MatrixXd A = Eigen::MatrixXd::Zero(dim_x, dim_x);
     Eigen::MatrixXd B = Eigen::MatrixXd::Zero(dim_x, dim_u);
     Eigen::MatrixXd P = Eigen::MatrixXd::Zero(dim_x, dim_x);
@@ -67,11 +66,6 @@ void Simulation::start(std::string id, double end_time, unsigned int end_iterati
     X_dot(2) = 0.0;
     X_dot(3) = 0.0;
     X_dot_prev = X_dot;
-
-    X_desired(0) = 50.0;
-    X_desired(1) = 0.0;
-    X_desired(2) = 0.0;
-    X_desired(3) = 0.0;
 
 
 
@@ -136,10 +130,10 @@ void Simulation::start(std::string id, double end_time, unsigned int end_iterati
 
     clock_t start = clock();
     solveRiccati(A, B, Q, R, P, K, time_delta);
-
     clock_t end = clock();
+
     std::cout << "Computation time = " << (double)(end - start) / CLOCKS_PER_SEC << " (s)" << std::endl;
-    PRINT_MAT(K);
+    // PRINT_MAT(K);
 
     while(this->iteration < this->end_iteration){
         double pole_dis_cos = cos(pole_dis);
@@ -157,7 +151,7 @@ void Simulation::start(std::string id, double end_time, unsigned int end_iterati
         pole_vel = ((pole_accel + pole_accel_prev) / 2.0 * (time - time_prev));
         pole_dis = ((pole_vel + pole_vel_prev) / 2.0 * (time - time_prev));
 
-        u = -1.0*K * (X - X_desired);
+        u = -1.0*K * (X - desired_state);
         // X(0) = cart_dis;
         // X(1) = cart_vel;
         // X(2) = pole_dis;
@@ -183,4 +177,10 @@ void Simulation::start(std::string id, double end_time, unsigned int end_iterati
         }
         this->iteration++;
     }
+
+    double decimal_point_accuracy = 0.05;
+    if (X.isApprox(desired_state, decimal_point_accuracy)){
+        return true;
+    }
+    return false;
 };
