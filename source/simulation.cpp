@@ -35,7 +35,7 @@ void solveRiccati(Eigen::MatrixXd &A, Eigen::MatrixXd &B,
     K = R.inverse() * B.transpose() * P;
 }
 
-bool Simulation::start(std::string id, double end_time, unsigned int end_iteration, Eigen::MatrixXd Q, Eigen::MatrixXd R, Eigen::MatrixXd desired_state){
+bool Simulation::start(std::string id, double end_time, unsigned int end_iteration, Eigen::MatrixXd Q, Eigen::MatrixXd R, Eigen::MatrixXd start_state, Eigen::MatrixXd desired_state){
     std::ofstream outfile;
     outfile.open(id + ".csv");
 
@@ -44,7 +44,7 @@ bool Simulation::start(std::string id, double end_time, unsigned int end_iterati
     uint dim_x = 4;
     uint dim_u = 1;
 
-    Eigen::MatrixXd X = Eigen::MatrixXd::Zero(dim_x, dim_u);
+    Eigen::MatrixXd X = start_state;
     Eigen::MatrixXd X_prev = Eigen::MatrixXd::Zero(dim_x, dim_u);
     Eigen::MatrixXd X_dot = Eigen::MatrixXd::Zero(dim_x, dim_u);
     Eigen::MatrixXd X_dot_prev = Eigen::MatrixXd::Zero(dim_x, dim_u);
@@ -55,10 +55,6 @@ bool Simulation::start(std::string id, double end_time, unsigned int end_iterati
     Eigen::MatrixXd K_discrete = Eigen::MatrixXd::Zero(dim_x, dim_x);
     Eigen::MatrixXd u = Eigen::MatrixXd::Zero(dim_u, dim_u);
 
-    X(0) = 0.0;
-    X(1) = 0.0;
-    X(2) = 3.14159;
-    X(3) = 0.0;
     X_prev = X;
 
     X_dot(0) = 0.0;
@@ -77,10 +73,10 @@ bool Simulation::start(std::string id, double end_time, unsigned int end_iterati
     cart_pole.pole_length = 1.0;
     double b = 1.0;
     
-    double pole_dis = 3.14159;
-    double cart_dis = 0.0;
-    double pole_vel = 0.0;
-    double cart_vel = 0.0;
+    double cart_dis = X(0);
+    double cart_vel = X(1);
+    double pole_dis = X(2);
+    double pole_vel = X(3);
     double pole_accel = 0.0;
     double cart_accel = 0.0;
 
@@ -101,7 +97,6 @@ bool Simulation::start(std::string id, double end_time, unsigned int end_iterati
     double time_prev = 0.0;
 
     outfile.precision(12);
-    
 
     A(0, 0) = 0.0;
     A(0, 1) = 1.0;
@@ -128,11 +123,10 @@ bool Simulation::start(std::string id, double end_time, unsigned int end_iterati
     B(2, 0) = b / cart_pole.cart_mass*cart_pole.pole_length;
     B(3, 0) = 1.0;
 
-    clock_t start = clock();
+    // clock_t start = clock();
     solveRiccati(A, B, Q, R, P, K, time_delta);
-    clock_t end = clock();
+    // clock_t end = clock();
 
-    std::cout << "Computation time = " << (double)(end - start) / CLOCKS_PER_SEC << " (s)" << std::endl;
     // PRINT_MAT(K);
 
     while(this->iteration < this->end_iteration){

@@ -5,7 +5,6 @@
 #include <Eigen/Dense>
 #include "simulation.hpp"
 #include <vector>
-#include <mpi.h>
 
 std::vector<double> double_range(double start, double end, int total){
     std::vector<double> values;
@@ -17,31 +16,32 @@ std::vector<double> double_range(double start, double end, int total){
 }
 
 struct TrajectoryStatus{
-    int processor_id = -1;
-    int thread_id = -1;
     int trajectory_id = -1;
+    int simulation_id = -1;
+    double r_value = 0.0;
     bool trajectory_status = 0; // Some day could be a range of values to report "Goodness..." (Do when transition to rust...)
 };
 
 int main(int argc, char *argv[]){
 
     // mpirun -np 4 ./cart_pole 10 10 0.001 100 25.0
-
-
-    int numprocs,rank;
-
     // Command to start simulation
     // 
     // ./cart_pole 10 10 0.001 100.0
     // [num_threads num_simulations start_r end_r end_time]
+
+
+
 
     int num_threads = std::stoi(argv[1]);
     int num_simulations = std::stoi(argv[2]);
     double start_r = std::stod(argv[3]);
     double end_r = std::stod(argv[4]);
     double end_time = std::stod(argv[5]);
+    int sims_ran = 0;
 
     omp_set_num_threads(num_threads);
+    omp_set_nested(1);
 
     int end_iteration = 100000;
     std::vector<double> r_values = double_range(start_r, end_r, num_simulations);
@@ -50,6 +50,13 @@ int main(int argc, char *argv[]){
     unsigned int dim_u = 1;
 
     std::vector<Eigen::MatrixXd> trajectory;
+    Eigen::MatrixXd start_state  = Eigen::MatrixXd::Zero(dim_x, dim_u);
+    start_state(0) = 0.0;
+    start_state(1) = 0.0;
+    start_state(2) = 3.14159;
+    start_state(3) = 0.0;
+    Eigen::MatrixXd prev_state = start_state;
+
     Eigen::MatrixXd point_zero  = Eigen::MatrixXd::Zero(dim_x, dim_u);
     point_zero(0) = 0.0;
 
@@ -79,45 +86,9 @@ int main(int argc, char *argv[]){
     trajectory.push_back(point_five);
     trajectory.push_back(point_six);
        
+    omp_lock_t write_lock;
+    omp_init_lock(&write_lock);
     std::vector<TrajectoryStatus> statuses; 
-
-
-    MPI_Init(&argc,&argv); // Initalize MPI environment
-    MPI_Comm_size(MPI_COMM_WORLD,&numprocs); //get total number of processes
-    MPI_Comm_rank(MPI_COMM_WORLD,&rank); // get process identity number
-    // MPI_Buffer_attach(statuses, trajectory.size() * num_simulations);
-
-    int num_per_rank = std::floor((trajectory.size()/numprocs));
-    if (trajectory.size()%numprocs > 0){
-        num_per_rank += 1;
-    }
-
-
-    MPI_Status status;
-
-
-    // Make special type for custom message passing...
-    MPI_Datatype mpi_trajectory_message;
-    TrajectoryStatus trajectory_status;
-    int B[] = {1,1,1,1};
-    MPI::Aint D[] = {
-        offsetof(struct TrajectoryStatus, processor_id),
-        offsetof(struct TrajectoryStatus, thread_id),
-        offsetof(struct TrajectoryStatus, trajectory_id),
-        offsetof(struct TrajectoryStatus, trajectory_status),
-        sizeof(struct TrajectoryStatus)
-    };
-    MPI_Datatype T[4] = {
-        MPI::INT,
-        MPI::INT,
-        MPI::INT,
-        MPI::BOOL
-    };
-    MPI_Type_create_struct(4, B, D, T, &mpi_trajectory_message);
-    MPI_Type_commit(&mpi_trajectory_message);
-
-    // 
-    MPI_Request request = MPI_REQUEST_NULL;
 
     std::cout << "argc == " << argc << '\n';
     for (int ndx{}; ndx != argc; ++ndx){
@@ -127,75 +98,73 @@ int main(int argc, char *argv[]){
 
 
     std::cout << "Simulation Started" << std::endl;
-
     // Set Desired State & Pass to thread
-    for (int i = rank * num_per_rank; i <= rank*num_per_rank + num_per_rank; i++)
+    #pragma omp parallel
     {
-        TrajectoryStatus local_statuses[num_simulations];
-        if (i < trajectory.size()){
-            std::cout << i << "," << num_per_rank << std::endl;
-
-            #pragma omp parallel
-            {
-                int tid =  omp_get_thread_num();
+        #pragma omp for
+        for (int i = 0; i <= trajectory.size(); i++)
+        {
+            TrajectoryStatus local_statuses[num_simulations];
+            if (i < trajectory.size()){
+                sims_ran++;
+                // std::cout << i << "," << num_per_rank << std::endl;
+                // std::vector<TrajectoryStatus> local_statuses;
                 // Need to tell this thread if it was successful or not for given time to
-                Eigen::MatrixXd desired_state = trajectory[i];
-                
-                #pragma omp for //schedule(dynamic, 1)
-                for (int j = 0; j < num_simulations; j++){
-
-                    bool success = false;
-                    int tid = omp_get_thread_num();
-                    Eigen::MatrixXd Q = Eigen::MatrixXd::Zero(dim_x, dim_x);
-                    Eigen::MatrixXd R = Eigen::MatrixXd::Zero(dim_u, dim_u);
-                    Q(0, 0) = 1.0;
-                    Q(1, 1) = 1.0;
-                    Q(2, 2) = 1.0;
-                    Q(3, 3) = 1.0;
-                    R(0, 0) = r_values[j];
-
-                    Simulation simulation = Simulation();
-                    success = simulation.start(std::to_string(i) + "_" + std::to_string(j), end_time, end_iteration, Q, R, desired_state);
-                    std::string status_message = std::to_string(i) + "," + std::to_string(j) + "," + std::to_string(success);
-
-                    TrajectoryStatus traj_status{
-                        rank,
-                        tid,
-                        j,
-                        success
-                    };
-                    local_statuses[j] = traj_status;
+                if (i > 0){
+                    prev_state = trajectory[i-1];
                 }
-                // #TrajectoryStatus recv_status;
-                // #MPI_Recv(&recv_status, 1, mpi_trajectory_message, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
-                // #std::cout << "Receive: " << std::to_string(recv_status.processor_id) << "," << std::to_string(recv_status.thread_id) << "," << std::to_string(recv_status.trajectory_id) << "," << std::boolalpha << recv_status.trajectory_status << std::endl;
-                // #statuses[recv_status.processor_id * recv_status.trajectory_id] = recv_status;
+                Eigen::MatrixXd desired_state = trajectory[i];
+                int tid =  omp_get_thread_num();
+                
+                
+                #pragma omp parallel
+                {
+                    #pragma omp for //schedule(dynamic, 1)
+                    for (int j = 0; j < num_simulations; j++)
+                    {
+                        bool success = false;
+                        int tid = omp_get_thread_num();
+                        Eigen::MatrixXd Q = Eigen::MatrixXd::Zero(dim_x, dim_x);
+                        Eigen::MatrixXd R = Eigen::MatrixXd::Zero(dim_u, dim_u);
+                        Q(0, 0) = 1.0;
+                        Q(1, 1) = 1.0;
+                        Q(2, 2) = 1.0;
+                        Q(3, 3) = 1.0;
+                        R(0, 0) = r_values[j];
+
+                        Simulation simulation = Simulation();
+                        success = simulation.start(std::to_string(i) + "_" + std::to_string(j), end_time, end_iteration, Q, R, prev_state, desired_state);
+                        std::string status_message = std::to_string(i) + "," + std::to_string(j) + "," + std::to_string(success);
+
+                        TrajectoryStatus traj_status{
+                            i,
+                            j,
+                            R(0,0),
+                            success
+                        };
+                        omp_set_lock(&write_lock);
+                        statuses.push_back(traj_status);
+                        omp_unset_lock(&write_lock);
+                    }
+                }
             }
-            MPI_Isend(local_statuses, num_simulations, mpi_trajectory_message, 0, 0, MPI_COMM_WORLD, &request); 
-            MPI_Irecv(local_statuses, num_simulations, mpi_trajectory_message, rank, 1, MPI_COMM_WORLD, &request);
-            for (int i_status = 0; i < sizeof(local_statuses)/sizeof(local_statuses[0]); i++){
-                statuses.push_back(local_statuses[i]);
+            else{
+                std::cout << i << "," << "NO OP" << std::endl;
             }
         }
-        else{
-            std::cout << i << "," << "NO OP" << std::endl;
-        }
-
-
     }
+    omp_destroy_lock(&write_lock);
     std::cout << "Simulation Ended" << std::endl;
-
-
-
 
     // Trajectory Point #,  Simulation #, Status
     std::ofstream outfile;
-    outfile.open(std::to_string(rank) + "simulation.csv");
+    outfile.open("simulation.csv");
+    outfile << "trajectory" << "," << "simulation" << "," << "input_cost" << "," << "status" << std::endl;
     for (int i = 0; i < statuses.size(); i++){
-        outfile << std::to_string(statuses[i].processor_id) << "," << std::to_string(statuses[i].thread_id) << "," << std::to_string(statuses[i].trajectory_id) << "," << std::boolalpha << statuses[i].trajectory_status << std::endl;
+        outfile << std::to_string(statuses[i].trajectory_id) << "," << std::to_string(statuses[i].simulation_id) << "," << std::to_string(statuses[i].r_value) << "," << std::boolalpha << statuses[i].trajectory_status << std::endl;
     }
 
-    MPI_Finalize();   
+    // MPI_Finalize();   
 
     return 0;
 }

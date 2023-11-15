@@ -15,7 +15,7 @@ class Simulation{
     public:
         Simulation();
         ~Simulation();
-        bool start(std::string id, double end_time, unsigned int end_iteration, Eigen::MatrixXd Q, Eigen::MatrixXd R, Eigen::MatrixXd desired_state);
+        bool start(std::string id, double end_time, unsigned int end_iteration, Eigen::MatrixXd Q, Eigen::MatrixXd R, Eigen::MatrixXd start_state, Eigen::MatrixXd desired_state);
 
     private:
         unsigned int iteration;
