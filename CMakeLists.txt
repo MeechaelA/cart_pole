@@ -14,6 +14,8 @@ include_directories(
   ${MPI_INCLUDE_PATH}
 )
 
+add_subdirectory(dependencies)
+
 add_library(simulation_lib source/simulation.cpp)
 
 add_library(cart_pole_lib source/cart_pole.cpp)
@@ -25,4 +27,4 @@ target_link_libraries(simulation_lib cart_pole_lib riccati_lib Eigen3::Eigen Ope
 
 add_executable(cart_pole source/main.cpp)
 
-target_link_libraries(cart_pole PRIVATE simulation_lib Eigen3::Eigen)
+target_link_libraries(cart_pole PRIVATE simulation_lib Eigen3::Eigen nlohmann_json::nlohmann_json)

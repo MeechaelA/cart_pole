@@ -36,8 +36,9 @@ void solveRiccati(Eigen::MatrixXd &A, Eigen::MatrixXd &B,
 }
 
 bool Simulation::start(std::string id, double end_time, unsigned int end_iteration, Eigen::MatrixXd Q, Eigen::MatrixXd R, Eigen::MatrixXd start_state, Eigen::MatrixXd desired_state){
-    std::ofstream outfile;
-    outfile.open(id + ".csv");
+    // std::ofstream outfile;
+    // outfile.open(id + ".csv");
+    this->id = id;
 
     this->end_iteration = end_iteration;
 
@@ -65,7 +66,7 @@ bool Simulation::start(std::string id, double end_time, unsigned int end_iterati
 
 
 
-    CartPole    cart_pole;
+    CartPole cart_pole;
 
     cart_pole.friction = 1.0;
     cart_pole.cart_mass = 5.0;
@@ -83,8 +84,9 @@ bool Simulation::start(std::string id, double end_time, unsigned int end_iterati
     double force = 0.0;
     double time = 0.0;
 
-    outfile <<  "time" << "," << "cart_vel_linear" << "," << "cart_dis_linear" <<  "," << "pole_vel_linear" << "," << "pole_dis_linear" << "," << "cart_accel" << "," << "cart_vel" << "," << "cart_dis" << "," << "pole_accel" << "," << "pole_vel" << "," << "pole_dis" << "," <<  "force" << std::endl;
-    outfile << time << "," <<  X(1) << "," << X(0) << "," << X(3) << "," << X(2) << "," << cart_accel << "," << cart_vel << "," <<  cart_dis << "," << pole_accel << "," << pole_vel << "," << pole_dis << "," << force << std::endl;
+    // outfile <<  "time" << "," << "cart_vel_linear" << "," << "cart_dis_linear" <<  "," << "pole_vel_linear" << "," << "pole_dis_linear" << "," << "cart_accel" << "," << "cart_vel" << "," << "cart_dis" << "," << "pole_accel" << "," << "pole_vel" << "," << "pole_dis" << "," <<  "force" << std::endl;
+    // outfile << time << "," <<  X(1) << "," << X(0) << "," << X(3) << "," << X(2) << "," << cart_accel << "," << cart_vel << "," <<  cart_dis << "," << pole_accel << "," << pole_vel << "," << pole_dis << "," << force << std::endl;
+    // outfile.precision(12);
 
     double pole_dis_prev = pole_dis;
     double cart_dis_prev = cart_dis;
@@ -96,7 +98,6 @@ bool Simulation::start(std::string id, double end_time, unsigned int end_iterati
     double time_delta = 0.001;
     double time_prev = 0.0;
 
-    outfile.precision(12);
 
     A(0, 0) = 0.0;
     A(0, 1) = 1.0;
@@ -154,7 +155,17 @@ bool Simulation::start(std::string id, double end_time, unsigned int end_iterati
 
         force = u(0);
 
-        outfile << time << "," <<  X(1) << "," << X(0) << "," << X(3) << "," << X(2) << "," << cart_accel << "," << cart_vel << "," <<  cart_dis << "," << pole_accel << "," << pole_vel << "," << pole_dis << "," << force << std::endl;
+
+        this->times.push_back(time);
+        this->cart_positions.push_back(cart_dis);
+        this->cart_velocities.push_back(cart_vel);
+        this->cart_accelerations.push_back(cart_accel);
+        this->pole_positions.push_back(pole_dis);
+        this->pole_velocities.push_back(pole_vel);
+        this->pole_accelerations.push_back(pole_accel);
+        this->forces.push_back(force);
+        
+        // outfile << time << "," <<  X(1) << "," << X(0) << "," << X(3) << "," << X(2) << "," << cart_accel << "," << cart_vel << "," <<  cart_dis << "," << pole_accel << "," << pole_vel << "," << pole_dis << "," << force << std::endl;
 
         cart_accel_prev = cart_accel;
         cart_vel_prev = cart_vel;
@@ -171,10 +182,86 @@ bool Simulation::start(std::string id, double end_time, unsigned int end_iterati
         }
         this->iteration++;
     }
+    std::map<std::string, std::vector<double>> key_value;
+    this->simulation_data.data.try_emplace(this->id, key_value);
+    this->simulation_data.data.at(this->id).try_emplace(std::string("time"), this->times);
+    this->simulation_data.data.at(this->id).try_emplace(std::string("cart_displacement"), this->cart_positions);
+    this->simulation_data.data.at(this->id).try_emplace(std::string("cart_velocity"), this->cart_velocities);
+    this->simulation_data.data.at(this->id).try_emplace(std::string("cart_acceleration"), this->cart_accelerations);
+    this->simulation_data.data.at(this->id).try_emplace(std::string("pole_displacement"), this->pole_positions);
+    this->simulation_data.data.at(this->id).try_emplace(std::string("pole_velocity"), this->pole_velocities);
+    this->simulation_data.data.at(this->id).try_emplace(std::string("pole_acceleration"), this->pole_accelerations);
+    this->simulation_data.data.at(this->id).try_emplace(std::string("force"), this->forces);
+
 
     double decimal_point_accuracy = 0.05;
     if (X.isApprox(desired_state, decimal_point_accuracy)){
-        return true;
+        this->status = 1.0;
+        this->simulation_data.status.trajectory_status = 1.0;
     }
-    return false;
+    this->simulation_data.status.trajectory_status = 0.0;
+
+    // boolean will be used to catch errors one day...
+    return true;
 };
+
+SimulationData Simulation::get_data(){
+    return this->simulation_data;
+}
+
+namespace simulation_functions{
+    // simple output function
+    void output(std::string outfile, const std::vector<SimulationData>& m){
+        std::ofstream out;
+        out.open(outfile);
+        out << "{" << std::endl;
+        // Iterate using C++17 facilities
+        for (int i_simulation = 0; i_simulation < m.size(); i_simulation++){
+            int i_key_one = 0;
+            for (const auto& [key_one, value_one] : m[i_simulation].data){
+                if (i_key_one != m.size()){
+                    out << "\"" << key_one << "\"" << ":" << "{" << std::endl;
+                    out << "\"" << "status" << "\"" << ":" << m[i_simulation].status.trajectory_status <<  "," << std::endl;    
+                    int i_key_two = 0;
+                    for (const auto& [key_two, value_two] : value_one){
+                        if (i_key_two != m.size()-1){
+                            out << "\"" << key_two << "\"" << ":" << std::endl << "[";
+                            for (int i_value = 0; i_value < value_two.size(); i_value++){
+                                if (i_value != value_two.size()-1){
+                                    out << value_two[i_value] << "," << " ";
+                                }
+                                else{
+                                    out << value_two[i_value];
+                                }
+                            }
+                            out << "]";
+                            if (i_key_two != value_one.size()-1){
+                                out << "," << std::endl;
+                            }
+                            else{
+
+                            }
+                        }
+                        else{
+                            out << "\"" << key_two << "\"" << ":" << std::endl;
+                        }
+                        i_key_two++;           
+                    }
+                    if (i_key_one != m.size()-1){
+                        out << "}" << "," << std::endl;
+                    }
+                    else{
+                        out << "}" << std::endl;
+                    }
+                }
+                else{
+                    out << "\"" << key_one << "\"" << ":" << "{";        
+                }
+                i_key_one++;
+            }
+        }
+        out << '\n' << "}";
+    }
+
+}
+

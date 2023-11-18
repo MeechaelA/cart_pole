@@ -59,6 +59,20 @@
         "typeinfo": "cpp",
         "cinttypes": "cpp",
         "optional": "cpp",
-        "core": "cpp"
+        "core": "cpp",
+        "any": "cpp",
+        "bitset": "cpp",
+        "codecvt": "cpp",
+        "condition_variable": "cpp",
+        "forward_list": "cpp",
+        "list": "cpp",
+        "unordered_set": "cpp",
+        "regex": "cpp",
+        "mutex": "cpp",
+        "ranges": "cpp",
+        "span": "cpp",
+        "valarray": "cpp",
+        "variant": "cpp",
+        "csignal": "cpp"
     }
 }
