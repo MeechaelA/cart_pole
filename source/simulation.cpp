@@ -210,29 +210,34 @@ SimulationData Simulation::get_data(){
 }
 
 namespace simulation_functions{
+
     // simple output function
     void output(std::string outfile, const std::vector<SimulationData>& m){
         std::ofstream out;
+        std::setprecision(32);
         out.open(outfile);
         out << std::scientific;
         out << "{" << std::endl;
         // Iterate using C++17 facilities
-        for (int i_simulation = 0; i_simulation < m.size(); i_simulation++){
+        for (int i_simulation = 0; i_simulation != m.size(); i_simulation++){
             int i_key_one = 0;
             for (const auto& [key_one, value_one] : m[i_simulation].data){
+
+
                 if (i_key_one != m.size()){
                     out << "\"" << key_one << "\"" << ":" << "{" << std::endl;
-                    out << "\"" << "status" << "\"" << ":" << m[i_simulation].status.trajectory_status <<  "," << std::endl;    
+                    out << "\"" << "status" << "\"" << ":" << m[i_simulation].status.trajectory_status << std::scientific <<  "," << std::endl;    
                     int i_key_two = 0;
+                    out << "\"" << "data" << "\"" << ":" <<  "{" << std::endl;
                     for (const auto& [key_two, value_two] : value_one){
                         if (i_key_two != m.size()-1){
                             out << "\"" << key_two << "\"" << ":" << std::endl << "[";
-                            for (int i_value = 0; i_value < value_two.size(); i_value++){
+                            for (int i_value = 0; i_value != value_two.size(); i_value++){
                                 if (i_value != value_two.size()-1){
-                                    out << value_two[i_value] << "," << " ";
+                                    out << value_two[i_value] << std::scientific << "," << " ";
                                 }
                                 else{
-                                    out << value_two[i_value];
+                                    out << value_two[i_value] << std::scientific;
                                 }
                             }
                             out << "]";
@@ -248,17 +253,16 @@ namespace simulation_functions{
                         }
                         i_key_two++;           
                     }
-                    if (i_key_one != m.size()-1){
-                        out << "}" << "," << std::endl;
-                    }
-                    else{
-                        out << "}" << std::endl;
-                    }
+                    out << "}" << std::endl;
                 }
                 else{
                     out << "\"" << key_one << "\"" << ":" << "{";        
                 }
+                out << "}" << std::endl;
                 i_key_one++;
+            }
+            if (i_simulation != m.size()-1){
+                out << "," << std::endl;
             }
         }
         out << '\n' << "}";
