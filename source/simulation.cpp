@@ -214,6 +214,7 @@ namespace simulation_functions{
     void output(std::string outfile, const std::vector<SimulationData>& m){
         std::ofstream out;
         out.open(outfile);
+        out << std::scientific;
         out << "{" << std::endl;
         // Iterate using C++17 facilities
         for (int i_simulation = 0; i_simulation < m.size(); i_simulation++){
