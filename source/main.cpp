@@ -8,16 +8,35 @@
 #include <nlohmann/json.hpp>
 
 
-std::vector<Eigen::MatrixXd> create_trajectory(double initial_pos, double end_position, int num_points, unsigned int dim_x, unsigned int dim_u){
+std::tuple<std::vector<Eigen::MatrixXd>, std::vector<Eigen::MatrixXd>> create_power_2_trajectory(double initial_pos, int num_points, unsigned int dim_x, unsigned int dim_u){
     std::vector<Eigen::MatrixXd> trajectory;
-    Eigen::MatrixXd matrix = Eigen::MatrixXd::Zero(dim_x, dim_u);
+    std::vector<Eigen::MatrixXd> trajectory_prev;
+
+
+    double point_prev;
+    double point;
+
     for (int i = 0; i < num_points; i++){
-        matrix(0) += (end_position - initial_pos) / num_points;
+        Eigen::MatrixXd matrix_prev = Eigen::MatrixXd::Zero(dim_x, dim_u);
+        Eigen::MatrixXd matrix = Eigen::MatrixXd::Zero(dim_x, dim_u);
+
+        if (i != 0){
+            point_prev = point;
+        }
+        else{
+            point_prev = initial_pos;
+        }
+        matrix_prev(0) = point_prev;
+        trajectory_prev.push_back(matrix_prev);
+
+        point = powf(2.0, i);
+        matrix(0) = point;
         trajectory.push_back(matrix);
     }
-    return trajectory;
-}
 
+    std::tuple<std::vector<Eigen::MatrixXd>, std::vector<Eigen::MatrixXd>> value = std::make_tuple(trajectory_prev, trajectory);
+    return value;
+}
 
 std::vector<double> double_range(double start, double end, int total){
     std::vector<double> values;
@@ -27,6 +46,9 @@ std::vector<double> double_range(double start, double end, int total){
     }
     return values;
 }
+
+
+
 
 // mpirun -np 4 ./cart_pole 10 10 0.001 100 25.0
 // Command to start simulation
@@ -59,24 +81,33 @@ int main(int argc, char *argv[]){
     std::vector<Eigen::MatrixXd> trajectory;
     std::vector<Eigen::MatrixXd> trajectory_prev;
     Eigen::MatrixXd start_state  = Eigen::MatrixXd::Zero(dim_x, dim_u);
-
     start_state(0) = 0.0;
     start_state(1) = 0.0;
     start_state(2) = 0.0;
     start_state(3) = 0.0;
 
-    int num_pts = 10;
+    int num_pts = 30;
     double start = 0.0;
-    double end = 100.0;
-    trajectory = create_trajectory(start + end/num_pts, end, num_pts, 4, 1);
-    trajectory_prev = create_trajectory(start, end, num_pts, 4, 1);
+    double end = 500.0;
 
-    // trajectory.push_back(point_four);
-    // trajectory.push_back(point_five);
-    // trajectory.push_back(point_six);
-    // trajectory.push_back(point_seven);
-    // trajectory.push_back(point_eight);
-    // trajectory.push_back(point_nine);
+    // 
+    // trajectory_prev = create_power_2_trajectory(start, num_pts, 4, 1);
+    // trajectory = create_power_2_trajectory(trajectory_prev[1](0,0), num_pts, 4, 1);
+    Eigen::MatrixXd point_zero  = Eigen::MatrixXd::Zero(dim_x, dim_u);
+    point_zero(0) = 10.0;
+
+    Eigen::MatrixXd point_one = Eigen::MatrixXd::Zero(dim_x, dim_u);
+    point_one(0) = 30.0;
+
+    Eigen::MatrixXd point_two  = Eigen::MatrixXd::Zero(dim_x, dim_u);
+    point_two(0) = 50.0;
+
+    Eigen::MatrixXd point_three  = Eigen::MatrixXd::Zero(dim_x, dim_u);
+    point_three(0) = 70.0;
+
+    std::tuple<std::vector<Eigen::MatrixXd>, std::vector<Eigen::MatrixXd>> value = create_power_2_trajectory(0.0, 12, 4, 1);
+    trajectory_prev = std::get<0>(value);
+    trajectory = std::get<1>(value);
 
     omp_lock_t simulations_write_lock;
     omp_init_lock(&simulations_write_lock);

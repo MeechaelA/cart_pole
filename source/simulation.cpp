@@ -71,7 +71,7 @@ bool Simulation::start(int trajectory_point, int simulation_num, double end_time
 
     CartPole cart_pole;
 
-    cart_pole.friction = 0.01;
+    cart_pole.friction = 1.0;
     cart_pole.cart_mass = 5.0;
     cart_pole.pole_mass = 1.0;
     cart_pole.pole_length = 10.0;
@@ -98,7 +98,7 @@ bool Simulation::start(int trajectory_point, int simulation_num, double end_time
     double pole_accel_prev = pole_accel;
     double cart_accel_prev = cart_accel;
 
-    double time_delta = 0.001;
+    double time_delta = 0.01;
     double time_prev = 0.0;
 
 
