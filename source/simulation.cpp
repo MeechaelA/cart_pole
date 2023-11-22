@@ -35,11 +35,14 @@ void solveRiccati(Eigen::MatrixXd &A, Eigen::MatrixXd &B,
     K = R.inverse() * B.transpose() * P;
 }
 
-bool Simulation::start(std::string id, double end_time, unsigned int end_iteration, Eigen::MatrixXd Q, Eigen::MatrixXd R, Eigen::MatrixXd start_state, Eigen::MatrixXd desired_state){
+
+// i < trajectory.size(); i++)
+// j < num_simulations; j++)
+
+bool Simulation::start(int trajectory_point, int simulation_num, double end_time, unsigned int end_iteration, Eigen::MatrixXd Q, Eigen::MatrixXd R, Eigen::MatrixXd start_state, Eigen::MatrixXd desired_state){
     // std::ofstream outfile;
     // outfile.open(id + ".csv");
-    this->id = id;
-
+    this->id = std::to_string(trajectory_point) + "_" + std::to_string(simulation_num);
     this->end_iteration = end_iteration;
 
     uint dim_x = 4;
@@ -68,10 +71,10 @@ bool Simulation::start(std::string id, double end_time, unsigned int end_iterati
 
     CartPole cart_pole;
 
-    cart_pole.friction = 1.0;
+    cart_pole.friction = 0.01;
     cart_pole.cart_mass = 5.0;
     cart_pole.pole_mass = 1.0;
-    cart_pole.pole_length = 1.0;
+    cart_pole.pole_length = 10.0;
     double b = 1.0;
     
     double cart_dis = X(0);
@@ -140,11 +143,11 @@ bool Simulation::start(std::string id, double end_time, unsigned int end_iterati
         cart_accel = (1.0/p)*(pow(-cart_pole.pole_mass,2.0)*pow(cart_pole.pole_length,2.0)*cart_pole.gravity*pole_dis_cos*pole_dis_sin + cart_pole.pole_mass*pow(cart_pole.pole_length,2.0)*(cart_pole.pole_mass*cart_pole.pole_length*pow(pole_vel,2.0)*pole_dis_sin - cart_pole.friction*cart_vel)) + cart_pole.pole_mass*cart_pole.pole_length*cart_pole.pole_length*(1.0/p)*force;
         pole_accel = (1.0/p)*((cart_pole.pole_mass+cart_pole.cart_mass)*cart_pole.pole_mass*cart_pole.gravity*cart_pole.pole_length*pole_dis_sin - cart_pole.pole_mass*cart_pole.pole_length*pole_dis_cos*(cart_pole.pole_mass*cart_pole.pole_length*pow(pole_vel,2.0)*pole_dis_sin - cart_pole.friction*cart_vel)) - cart_pole.pole_mass*cart_pole.pole_length*pole_dis_cos*(1.0/p)*force;
 
-        cart_vel = (cart_accel + cart_accel_prev) / 2.0 * (time - time_prev);
-        cart_dis = (cart_vel + cart_vel_prev) / 2.0 * (time - time_prev);
+        cart_vel += (cart_accel + cart_accel_prev) / 2.0 * (time - time_prev);
+        cart_dis += (cart_vel + cart_vel_prev) / 2.0 * (time - time_prev);
 
-        pole_vel = ((pole_accel + pole_accel_prev) / 2.0 * (time - time_prev));
-        pole_dis = ((pole_vel + pole_vel_prev) / 2.0 * (time - time_prev));
+        pole_vel += ((pole_accel + pole_accel_prev) / 2.0 * (time - time_prev));
+        pole_dis += ((pole_vel + pole_vel_prev) / 2.0 * (time - time_prev));
 
         u = -1.0*K * (X - desired_state);
         // X(0) = cart_dis;
@@ -157,11 +160,11 @@ bool Simulation::start(std::string id, double end_time, unsigned int end_iterati
 
 
         this->times.push_back(time);
-        this->cart_positions.push_back(cart_dis);
-        this->cart_velocities.push_back(cart_vel);
+        this->cart_positions.push_back(X(0));
+        this->cart_velocities.push_back(X(1));
         this->cart_accelerations.push_back(cart_accel);
-        this->pole_positions.push_back(pole_dis);
-        this->pole_velocities.push_back(pole_vel);
+        this->pole_positions.push_back(X(2));
+        this->pole_velocities.push_back(X(3));
         this->pole_accelerations.push_back(pole_accel);
         this->forces.push_back(force);
         
@@ -194,12 +197,22 @@ bool Simulation::start(std::string id, double end_time, unsigned int end_iterati
     this->simulation_data.data.at(this->id).try_emplace(std::string("force"), this->forces);
 
 
-    double decimal_point_accuracy = 0.05;
-    if (X.isApprox(desired_state, decimal_point_accuracy)){
-        this->status = 1.0;
-        this->simulation_data.status.trajectory_status = 1.0;
-    }
-    this->simulation_data.status.trajectory_status = 0.0;
+    // double decimal_point_accuracy = 0.05;
+    // if (X.isApprox(desired_state, decimal_point_accuracy)){
+    //     this->status = 1.0;
+    //     this->simulation_data.status.trajectory_status = 1.0;
+    // }
+    // this->simulation_data.status.trajectory_status = 0.0;
+
+    double desired_norm = desired_state.norm();
+    double x_norm = X.norm();
+
+    this->status = 1.0; // (fabsf64(x_norm - desired_norm) / x_norm) * 100.0;
+    this->simulation_data.status.trajectory_status = this->status;
+
+    this->simulation_data.status.trajectory_id = trajectory_point;
+    this->simulation_data.status.simulation_id = simulation_num;
+    this->simulation_data.status.r_value = R(0,0);
 
     // boolean will be used to catch errors one day...
     return true;
@@ -227,6 +240,11 @@ namespace simulation_functions{
                 if (i_key_one != m.size()){
                     out << "\"" << key_one << "\"" << ":" << "{" << std::endl;
                     out << "\"" << "status" << "\"" << ":" << m[i_simulation].status.trajectory_status << std::scientific <<  "," << std::endl;    
+                    out << "\"" << "trajectory" << "\"" << ":" << m[i_simulation].status.trajectory_id <<  "," << std::endl;    
+                    out << "\"" << "simulation" << "\"" << ":" << m[i_simulation].status.simulation_id <<  "," << std::endl;    
+                    out << "\"" << "r" << "\"" << ":" << m[i_simulation].status.r_value << std::scientific <<  "," << std::endl;    
+
+
                     int i_key_two = 0;
                     out << "\"" << "data" << "\"" << ":" <<  "{" << std::endl;
                     for (const auto& [key_two, value_two] : value_one){

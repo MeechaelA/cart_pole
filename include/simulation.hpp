@@ -29,7 +29,7 @@ class Simulation{
     public:
         Simulation();
         ~Simulation();
-        bool start(std::string id, double end_time, unsigned int end_iteration, Eigen::MatrixXd Q, Eigen::MatrixXd R, Eigen::MatrixXd start_state, Eigen::MatrixXd desired_state);
+        bool start(int trajectory_point, int simulation_num, double end_time, unsigned int end_iteration, Eigen::MatrixXd Q, Eigen::MatrixXd R, Eigen::MatrixXd start_state, Eigen::MatrixXd desired_state);
         SimulationData get_data();
         std::string id;
         double status;
@@ -39,7 +39,7 @@ class Simulation{
     private:
         unsigned int iteration;
         unsigned int end_iteration;
-
+        
         SimulationData simulation_data;
         std::vector<double> times;
         std::vector<double> cart_positions;

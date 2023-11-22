@@ -8,6 +8,16 @@
 #include <nlohmann/json.hpp>
 
 
+std::vector<Eigen::MatrixXd> create_trajectory(double initial_pos, double end_position, int num_points, unsigned int dim_x, unsigned int dim_u){
+    std::vector<Eigen::MatrixXd> trajectory;
+    Eigen::MatrixXd matrix = Eigen::MatrixXd::Zero(dim_x, dim_u);
+    for (int i = 0; i < num_points; i++){
+        matrix(0) += (end_position - initial_pos) / num_points;
+        trajectory.push_back(matrix);
+    }
+    return trajectory;
+}
+
 
 std::vector<double> double_range(double start, double end, int total){
     std::vector<double> values;
@@ -47,6 +57,7 @@ int main(int argc, char *argv[]){
     unsigned int dim_x = 4;
     unsigned int dim_u = 1;
     std::vector<Eigen::MatrixXd> trajectory;
+    std::vector<Eigen::MatrixXd> trajectory_prev;
     Eigen::MatrixXd start_state  = Eigen::MatrixXd::Zero(dim_x, dim_u);
 
     start_state(0) = 0.0;
@@ -54,44 +65,17 @@ int main(int argc, char *argv[]){
     start_state(2) = 0.0;
     start_state(3) = 0.0;
 
-    Eigen::MatrixXd prev_state = start_state;
+    int num_pts = 10;
+    double start = 0.0;
+    double end = 100.0;
+    trajectory = create_trajectory(start + end/num_pts, end, num_pts, 4, 1);
+    trajectory_prev = create_trajectory(start, end, num_pts, 4, 1);
 
-    Eigen::MatrixXd point_zero  = Eigen::MatrixXd::Zero(dim_x, dim_u);
-    point_zero(0) = 100.0;
-
-    Eigen::MatrixXd point_one   = Eigen::MatrixXd::Zero(dim_x, dim_u);
-    point_one(0) = 250.0;
-
-    Eigen::MatrixXd point_two   = Eigen::MatrixXd::Zero(dim_x, dim_u);
-    point_two(0) = 100.0;
-
-    Eigen::MatrixXd point_three = Eigen::MatrixXd::Zero(dim_x, dim_u);
-    point_three(0) = -250.0;
-
-    Eigen::MatrixXd point_four  = Eigen::MatrixXd::Zero(dim_x, dim_u);
-    point_four(0) = 100.0;
-
-    Eigen::MatrixXd point_five  = Eigen::MatrixXd::Zero(dim_x, dim_u);
-    point_five(0) = 250.0;
-
-    Eigen::MatrixXd point_six   = Eigen::MatrixXd::Zero(dim_x, dim_u);
-    point_six(0) = 100.0;
-
-    Eigen::MatrixXd point_seven   = Eigen::MatrixXd::Zero(dim_x, dim_u);
-    point_seven(0) = -250.0;
-
-    Eigen::MatrixXd point_eight   = Eigen::MatrixXd::Zero(dim_x, dim_u);
-    point_eight(0) = 100.0;
-
-    trajectory.push_back(point_zero);
-    trajectory.push_back(point_one);
-    trajectory.push_back(point_two);
-    trajectory.push_back(point_three);
-    trajectory.push_back(point_four);
-    trajectory.push_back(point_five);
-    trajectory.push_back(point_six);
-    trajectory.push_back(point_seven);
-    trajectory.push_back(point_eight);
+    // trajectory.push_back(point_four);
+    // trajectory.push_back(point_five);
+    // trajectory.push_back(point_six);
+    // trajectory.push_back(point_seven);
+    // trajectory.push_back(point_eight);
     // trajectory.push_back(point_nine);
 
     omp_lock_t simulations_write_lock;
@@ -117,20 +101,17 @@ int main(int argc, char *argv[]){
         #pragma omp for
         for (int i = 0; i < trajectory.size(); i++)
         {
-            // Need to tell this thread if it was successful or not for given time to
+
             Eigen::MatrixXd desired_state = trajectory[i];
+            Eigen::MatrixXd prev_state = trajectory_prev[i];
+
             #pragma omp parallel
             {
                 #pragma omp for
                 for (int j = 0; j < num_simulations; j++)
                 {
-                    if (i > 0){
-                        prev_state = trajectory[i-1];
-                    }
-                    else{
-                        prev_state = start_state;
-                    }
 
+                    
                     bool success = false;
                     Eigen::MatrixXd Q = Eigen::MatrixXd::Zero(dim_x, dim_x);
                     Eigen::MatrixXd R = Eigen::MatrixXd::Zero(dim_u, dim_u);
@@ -143,7 +124,7 @@ int main(int argc, char *argv[]){
                     R(0, 0) = r_values[j];
 
                     Simulation simulation = Simulation();
-                    success = simulation.start(std::to_string(i) + "_" + std::to_string(j), end_time, end_iteration, Q, R, prev_state, desired_state);
+                    success = simulation.start(i, j, end_time, end_iteration, Q, R, prev_state, desired_state);
 
                     std::string status_message = std::to_string(i) + "," + std::to_string(j) + "," + std::to_string(success);
 
