@@ -223,9 +223,49 @@ SimulationData Simulation::get_data(){
 }
 
 namespace simulation_functions{
+    std::tuple<std::vector<Eigen::MatrixXd>, std::vector<Eigen::MatrixXd>> create_power_2_trajectory(double initial_pos, int num_points, unsigned int dim_x, unsigned int dim_u){
+        std::vector<Eigen::MatrixXd> trajectory;
+        std::vector<Eigen::MatrixXd> trajectory_prev;
+
+
+        double point_prev;
+        double point;
+
+        for (int i = 0; i < num_points; i++){
+            Eigen::MatrixXd matrix_prev = Eigen::MatrixXd::Zero(dim_x, dim_u);
+            Eigen::MatrixXd matrix = Eigen::MatrixXd::Zero(dim_x, dim_u);
+
+            if (i != 0){
+                point_prev = point;
+            }
+            else{
+                point_prev = initial_pos;
+            }
+            matrix_prev(0) = point_prev;
+            trajectory_prev.push_back(matrix_prev);
+
+            point = powf(2.0, i);
+            matrix(0) = point;
+            trajectory.push_back(matrix);
+        }
+
+        std::tuple<std::vector<Eigen::MatrixXd>, std::vector<Eigen::MatrixXd>> value = std::make_tuple(trajectory_prev, trajectory);
+        return value;
+    };
+
+    std::vector<double> double_range(double start, double end, int total){
+        std::vector<double> values;
+        double step = (end-start)/total;
+        for (int i=1; i <= total; i++){
+            values.push_back(i*step);
+        }
+        return values;
+    };
+
+
 
     // simple output function
-    void output(std::string outfile, const std::vector<SimulationData>& m){
+    void output_simulation(std::string outfile, const std::vector<SimulationData>& m){
         std::ofstream out;
         std::setprecision(32);
         out.open(outfile);
@@ -284,7 +324,44 @@ namespace simulation_functions{
             }
         }
         out << '\n' << "}";
-    }
+    };
+
+    // simulation_functions::output_times("times.json", total_time_delta, outer_times, inner_times);
+
+    void output_times(std::string outfile, double total_time, std::vector<double> outer_times, std::vector<double> inner_times){
+        std::ofstream out;
+        std::setprecision(32);
+        out.open(outfile);
+        out << std::scientific;
+        out << "{" << std::endl;
+
+        out << "\"total_time\"" << ":" << total_time << "," << std::endl; 
+        out << "\"outer_times\"" << ":" << std::endl;
+        out << "[" << std::endl;
+        for (int i = 0; i < outer_times.size(); i++){
+            if (i != outer_times.size()-1){
+                out << outer_times[i] << ",";
+            }
+            else{
+                out << outer_times[i];
+            }
+        }
+        out << "]," << std::endl;
+
+        out << "\"inner_times\"" << ":" << std::endl;
+        out << "[" << std::endl;
+        for (int i = 0; i < inner_times.size(); i++){
+            if (i != inner_times.size()-1){
+                out << inner_times[i] << ",";
+            }
+            else{
+                out << inner_times[i];
+            }
+        }
+        out << "]";
+
+        out << '\n' << "}";
+    };
 
 }
 
