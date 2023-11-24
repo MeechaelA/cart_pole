@@ -1,4 +1,4 @@
 echo "Yeet"
 
-export PATH="/opt/drake/bin${PATH:+:${PATH}}"
-export PYTHONPATH="/opt/drake/lib/python$(python3 -c 'import sys; print("{0}.{1}".format(*sys.version_info))')/site-packages${PYTHONPATH:+:${PYTHONPATH}}"
+export CC=/opt/rh/gcc-toolset-12/root/bin/gcc
+export CXX=/opt/rh/gcc-toolset-12/root/bin/g++

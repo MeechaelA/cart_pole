@@ -125,6 +125,9 @@ int main(int argc, char *argv[]){
     std::vector<TrajectoryStatus> statuses;
     std::cout << "Simulation Started" << std::endl;
     // Set Desired State & Pass to thread
+
+    double total_time_initial = omp_get_wtime(); 
+    double outer_max_time_initial = omp_get_wtime();
     #pragma omp parallel
     {
         std::vector<TrajectoryStatus> local_statuses;
@@ -138,10 +141,10 @@ int main(int argc, char *argv[]){
 
             #pragma omp parallel
             {
+                double inner_max_time_initial = omp_get_wtime();
                 #pragma omp for
                 for (int j = 0; j < num_simulations; j++)
                 {
-
                     
                     bool success = false;
                     Eigen::MatrixXd Q = Eigen::MatrixXd::Zero(dim_x, dim_x);
@@ -173,8 +176,17 @@ int main(int argc, char *argv[]){
                     omp_set_lock(&local_simulations_write_lock);
                     local_simulations.push_back(simulation.get_data());
                     omp_unset_lock(&local_simulations_write_lock);
+
+                    double inner_max_time_final = omp_get_wtime();
+                    double inner_max_time = inner_max_time_final - inner_max_time_initial;
+                    #pragma omp critical
+                    std::cout << "Inner Time: " << inner_max_time << std::endl;
                 }
             }
+            double outer_max_time_final = omp_get_wtime();
+            double outer_max_time = outer_max_time_final - outer_max_time_initial;
+            #pragma omp critical
+            std::cout << "Outer Time: " << outer_max_time << std::endl;
         }
         for (int i_status = 0; i_status < local_statuses.size(); i_status++){
             omp_set_lock(&statuses_write_lock);
@@ -188,6 +200,10 @@ int main(int argc, char *argv[]){
             omp_unset_lock(&simulations_write_lock);                    
         }
     }
+    double total_time_final = omp_get_wtime(); 
+    double total_time_delta = total_time_final - total_time_initial;
+    
+    std::cout << "Total Simulation Time: " << total_time_delta << std::endl;
 
     std::cout << "Simulation Ended" << std::endl;
 
