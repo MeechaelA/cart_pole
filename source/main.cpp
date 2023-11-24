@@ -20,11 +20,12 @@ int main(int argc, char *argv[]){
     //     std::cout << "argv[" << argc << "] == " << static_cast<void*>(argv[argc]) << '\n';
     // }
 
-    int num_threads = std::stoi(argv[1]);
-    int num_simulations = std::stoi(argv[2]);
-    double start_r = std::stod(argv[3]);
-    double end_r = std::stod(argv[4]);
-    double end_time = std::stod(argv[5]);
+    std::string study_name = argv[1];
+    int num_threads = std::stoi(argv[2]);
+    int num_simulations = std::stoi(argv[3]);
+    double start_r = std::stod(argv[4]);
+    double end_r = std::stod(argv[5]);
+    double end_time = std::stod(argv[6]);
     int sims_ran = 0;
 
     omp_set_num_threads(num_threads);
@@ -182,8 +183,10 @@ int main(int argc, char *argv[]){
     std::cout << "Simulation Ended" << std::endl;
 
     std::cout << "Data Output Starting" << std::endl;
-    simulation_functions::output_simulation("simulation.json", simulations);
-    simulation_functions::output_times("times.json", total_time_delta, outer_times, inner_times);
+
+    simulation_functions::output_parent(study_name);
+    simulation_functions::output_simulation(study_name, simulations);
+    simulation_functions::output_times(study_name, total_time_delta, outer_times, inner_times);
 
     std::cout << "Data Output Finished" << std::endl;
 

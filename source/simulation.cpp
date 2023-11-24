@@ -268,7 +268,7 @@ namespace simulation_functions{
     void output_simulation(std::string outfile, const std::vector<SimulationData>& m){
         std::ofstream out;
         std::setprecision(32);
-        out.open(outfile);
+        out.open(outfile + ".sim");
         out << std::scientific;
         out << "{" << std::endl;
         // Iterate using C++17 facilities
@@ -331,36 +331,49 @@ namespace simulation_functions{
     void output_times(std::string outfile, double total_time, std::vector<double> outer_times, std::vector<double> inner_times){
         std::ofstream out;
         std::setprecision(32);
-        out.open(outfile);
+        out.open(outfile + ".time");
         out << std::scientific;
         out << "{" << std::endl;
 
-        out << "\"total_time\"" << ":" << total_time << "," << std::endl; 
-        out << "\"outer_times\"" << ":" << std::endl;
-        out << "[" << std::endl;
+        out << "\t\"total_time\"" << ":" << total_time << "," << std::endl; 
+        out << "\t\"outer_times\"" << ":" << std::endl;
+        out << "\t\t[" << std::endl << "\t\t\t";
         for (int i = 0; i < outer_times.size(); i++){
             if (i != outer_times.size()-1){
                 out << outer_times[i] << ",";
             }
             else{
-                out << outer_times[i];
+                out << outer_times[i] << std::endl;
             }
         }
-        out << "]," << std::endl;
+        out << "\t\t]," << std::endl;
 
-        out << "\"inner_times\"" << ":" << std::endl;
-        out << "[" << std::endl;
+        out << "\t\"inner_times\"" << ":" << std::endl;
+        out << "\t\t[" << std::endl << "\t\t\t";
         for (int i = 0; i < inner_times.size(); i++){
             if (i != inner_times.size()-1){
                 out << inner_times[i] << ",";
             }
             else{
-                out << inner_times[i];
+                out << inner_times[i] << std::endl;
             }
         }
-        out << "]";
+        out << "\t\t]";
 
         out << '\n' << "}";
+    };
+
+    void output_parent(std::string study_name){
+        std::ofstream out;
+        std::setprecision(32);
+        out.open(study_name + ".study");
+        out << std::scientific;
+        out << "{" << std::endl;
+
+        out << "\t\"simulation\": " << "\"" << study_name << ".sim"  << "\"" << "," << std::endl; 
+        out << "\t\"times\": " << "\"" << study_name << ".time" << "\"" << std::endl;
+
+        out << "}";
     };
 
 }

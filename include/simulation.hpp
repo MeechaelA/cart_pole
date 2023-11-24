@@ -56,6 +56,8 @@ namespace simulation_functions{
     std::vector<double> double_range(double start, double end, int total);
     void output_simulation(std::string outfile, const std::vector<SimulationData>& m);
     void output_times(std::string outfile, double total_time, std::vector<double> outer_times, std::vector<double> inner_times);
+    void output_parent(std::string study_name);
+
 }
 
 #endif
