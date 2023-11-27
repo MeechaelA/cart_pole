@@ -55,7 +55,7 @@ namespace simulation_functions{
     std::tuple<std::vector<Eigen::MatrixXd>, std::vector<Eigen::MatrixXd>> create_power_2_trajectory(double initial_pos, int num_points, unsigned int dim_x, unsigned int dim_u);
     std::vector<double> double_range(double start, double end, int total);
     void output_simulation(std::string outfile, const std::vector<SimulationData>& m);
-    void output_times(std::string outfile, double total_time, std::vector<double> outer_times, std::vector<double> inner_times);
+    void output_times(std::string outfile, int num_threads, int num_simulations, double total_time, std::vector<double> outer_times, std::vector<double> inner_times);
     void output_parent(std::string study_name);
 
 }

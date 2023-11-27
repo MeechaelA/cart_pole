@@ -7,11 +7,9 @@
 #include <vector>
 #include <nlohmann/json.hpp>
 
-// mpirun -np 4 ./cart_pole 10 10 0.001 100 25.0
 // Command to start simulation
-//
-// ./cart_pole 10 10 0.001 100.0
-// [num_threads num_simulations start_r end_r end_time]
+// ./cart_pole name 1 1 0.001 100.0 10
+// [name num_threads num_simulations start_r end_r end_time]
 int main(int argc, char *argv[]){
 
     // std::cout << "argc == " << argc << '\n';
@@ -29,7 +27,7 @@ int main(int argc, char *argv[]){
     int sims_ran = 0;
 
     omp_set_num_threads(num_threads);
-    omp_set_nested(1);
+    omp_set_nested(2);
 
     int end_iteration = 100000;
     std::vector<double> r_values = simulation_functions::double_range(start_r, end_r, num_simulations);
@@ -94,66 +92,62 @@ int main(int argc, char *argv[]){
     // Set Desired State & Pass to thread
 
     double total_time_initial = omp_get_wtime(); 
-    #pragma omp parallel
-    {
-        std::vector<TrajectoryStatus> local_statuses;
-        std::vector<SimulationData> local_simulations;
-        #pragma omp for
+        #pragma omp parallel for num_threads(num_threads)
         for (int i = 0; i < trajectory.size(); i++)
         {
+            std::vector<TrajectoryStatus> local_statuses;
+            std::vector<SimulationData> local_simulations;
+
             double outer_time_initial = omp_get_wtime();
 
             Eigen::MatrixXd desired_state = trajectory[i];
             Eigen::MatrixXd prev_state = trajectory_prev[i];
 
-            #pragma omp parallel
+            #pragma omp parallel for num_threads(num_threads) 
+            for (int j = 0; j < num_simulations; j++)
             {
-                #pragma omp for
-                for (int j = 0; j < num_simulations; j++)
-                {
-                    double inner_time_initial = omp_get_wtime();
-                    
-                    bool success = false;
-                    Eigen::MatrixXd Q = Eigen::MatrixXd::Zero(dim_x, dim_x);
-                    Eigen::MatrixXd R = Eigen::MatrixXd::Zero(dim_u, dim_u);
+                double inner_time_initial = omp_get_wtime();
+                
+                bool success = false;
+                Eigen::MatrixXd Q = Eigen::MatrixXd::Zero(dim_x, dim_x);
+                Eigen::MatrixXd R = Eigen::MatrixXd::Zero(dim_u, dim_u);
 
-                    Q(0, 0) = 1.0;
-                    Q(1, 1) = 1.0;
-                    Q(2, 2) = 1.0;
-                    Q(3, 3) = 1.0;
+                Q(0, 0) = 1.0;
+                Q(1, 1) = 1.0;
+                Q(2, 2) = 1.0;
+                Q(3, 3) = 1.0;
 
-                    R(0, 0) = r_values[j];
+                R(0, 0) = r_values[j];
 
-                    Simulation simulation = Simulation();
-                    success = simulation.start(i, j, end_time, end_iteration, Q, R, prev_state, desired_state);
-                    std::string status_message = std::to_string(i) + "," + std::to_string(j) + "," + std::to_string(success);
+                Simulation simulation = Simulation();
+                success = simulation.start(i, j, end_time, end_iteration, Q, R, prev_state, desired_state);
+                std::string status_message = std::to_string(i) + "," + std::to_string(j) + "," + std::to_string(success);
 
-                    TrajectoryStatus traj_status{
-                        i,
-                        j,
-                        R(0,0),
-                        simulation.status
-                    };
+                TrajectoryStatus traj_status{
+                    i,
+                    j,
+                    R(0,0),
+                    simulation.status
+                };
 
-                    omp_set_lock(&local_statuses_write_lock);
-                    local_statuses.push_back(traj_status);
-                    omp_unset_lock(&local_statuses_write_lock);
+                omp_set_lock(&local_statuses_write_lock);
+                local_statuses.push_back(traj_status);
+                omp_unset_lock(&local_statuses_write_lock);
 
 
 
 
-                    omp_set_lock(&local_simulations_write_lock);
-                    local_simulations.push_back(simulation.get_data());
-                    omp_unset_lock(&local_simulations_write_lock);
+                omp_set_lock(&local_simulations_write_lock);
+                local_simulations.push_back(simulation.get_data());
+                omp_unset_lock(&local_simulations_write_lock);
 
-                    double inner_time_final = omp_get_wtime();
-                    double inner_time = inner_time_final - inner_time_initial;
-                    
-                    omp_set_lock(&inner_time_write_lock);
-                    inner_times.push_back(inner_time);
-                    omp_unset_lock(&inner_time_write_lock);
+                double inner_time_final = omp_get_wtime();
+                double inner_time = inner_time_final - inner_time_initial;
+                
+                omp_set_lock(&inner_time_write_lock);
+                inner_times.push_back(inner_time);
+                omp_unset_lock(&inner_time_write_lock);
 
-                }
             }
             double outer_time_final = omp_get_wtime();
             double outer_time = outer_time_final - outer_time_initial;
@@ -161,19 +155,19 @@ int main(int argc, char *argv[]){
             outer_times.push_back(outer_time);
             omp_unset_lock(&inner_time_write_lock);
 
-        }
-        for (int i_status = 0; i_status < local_statuses.size(); i_status++){
-            omp_set_lock(&statuses_write_lock);
-            statuses.push_back(local_statuses[i_status]);
-            omp_unset_lock(&statuses_write_lock);                                    
-        }
+            for (int i_status = 0; i_status < local_statuses.size(); i_status++){
+                omp_set_lock(&statuses_write_lock);
+                statuses.push_back(local_statuses[i_status]);
+                omp_unset_lock(&statuses_write_lock);                                    
+            }
 
-        for (int i_simulation = 0; i_simulation < local_simulations.size(); i_simulation++){
-            omp_set_lock(&simulations_write_lock);
-            simulations.push_back(local_simulations[i_simulation]);
-            omp_unset_lock(&simulations_write_lock);                    
+            for (int i_simulation = 0; i_simulation < local_simulations.size(); i_simulation++){
+                omp_set_lock(&simulations_write_lock);
+                simulations.push_back(local_simulations[i_simulation]);
+                omp_unset_lock(&simulations_write_lock);                    
+            }
         }
-    }
+    
     double total_time_final = omp_get_wtime(); 
     double total_time_delta = total_time_final - total_time_initial;
 
@@ -186,7 +180,7 @@ int main(int argc, char *argv[]){
 
     simulation_functions::output_parent(study_name);
     simulation_functions::output_simulation(study_name, simulations);
-    simulation_functions::output_times(study_name, total_time_delta, outer_times, inner_times);
+    simulation_functions::output_times(study_name, num_threads, num_simulations, total_time_delta, outer_times, inner_times);
 
     std::cout << "Data Output Finished" << std::endl;
 

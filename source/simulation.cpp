@@ -328,13 +328,14 @@ namespace simulation_functions{
 
     // simulation_functions::output_times("times.json", total_time_delta, outer_times, inner_times);
 
-    void output_times(std::string outfile, double total_time, std::vector<double> outer_times, std::vector<double> inner_times){
+    void output_times(std::string outfile, int num_threads, int num_simulations, double total_time, std::vector<double> outer_times, std::vector<double> inner_times){
         std::ofstream out;
         std::setprecision(32);
         out.open(outfile + ".time");
         out << std::scientific;
         out << "{" << std::endl;
-
+        out << "\t\"num_threads\"" << ":" << num_threads << "," << std::endl; 
+        out << "\t\"num_simulations\"" << ":" << num_simulations << "," << std::endl; 
         out << "\t\"total_time\"" << ":" << total_time << "," << std::endl; 
         out << "\t\"outer_times\"" << ":" << std::endl;
         out << "\t\t[" << std::endl << "\t\t\t";
