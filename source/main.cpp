@@ -134,9 +134,6 @@ int main(int argc, char *argv[]){
                 local_statuses.push_back(traj_status);
                 omp_unset_lock(&local_statuses_write_lock);
 
-
-
-
                 omp_set_lock(&local_simulations_write_lock);
                 local_simulations.push_back(simulation.get_data());
                 omp_unset_lock(&local_simulations_write_lock);
@@ -147,7 +144,6 @@ int main(int argc, char *argv[]){
                 omp_set_lock(&inner_time_write_lock);
                 inner_times.push_back(inner_time);
                 omp_unset_lock(&inner_time_write_lock);
-
             }
             double outer_time_final = omp_get_wtime();
             double outer_time = outer_time_final - outer_time_initial;
@@ -171,11 +167,8 @@ int main(int argc, char *argv[]){
     double total_time_final = omp_get_wtime(); 
     double total_time_delta = total_time_final - total_time_initial;
 
-
     std::cout << "Total Simulation Time: " << total_time_delta << std::endl;
-
     std::cout << "Simulation Ended" << std::endl;
-
     std::cout << "Data Output Starting" << std::endl;
 
     simulation_functions::output_parent(study_name);

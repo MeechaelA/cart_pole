@@ -6,7 +6,6 @@ import matplotlib as mpl
 from matplotlib import cm
 import matplotlib.pyplot as plt
 
-
 def main():
     print("Plotting Times")
 
@@ -26,6 +25,14 @@ def main():
     sims = pathlib.Path("../build/study").glob("*.sim")
     times = pathlib.Path("../build/study").glob("*.time")
 
+    one_total_times = []
+    one_outer_times = []
+    one_inners_times = []
+
+    not_one_total_times = []
+    not_one_outer_times = []
+    not_one_inners_times = []
+
     threads = []
     num_simulations = []
     total_times = []
@@ -38,9 +45,33 @@ def main():
             json_data = json.loads(data)
 
             thread = json_data.get("num_threads")
+            num_simulation = json_data.get("num_simulations")
+
+            if (thread == 1 and num_simulation == 1):
+                total_time = json_data.get("total_time")
+                one_total_times.append(total_time)
+
+                # for outer_time in outer_times:
+                outer_times = json_data.get("outer_times")
+                one_outer_times.append(np.median(outer_times))
+
+                # for inner_time in inner_times:
+                inner_times = json_data.get("inner_times")
+                one_inners_times.append(np.median(inner_times))
+            else:
+                total_time = json_data.get("total_time")
+                not_one_total_times.append(total_time)
+
+                # for outer_time in outer_times:
+                outer_times = json_data.get("outer_times")
+                not_one_outer_times.append(np.median(outer_times))
+
+                # for inner_time in inner_times:
+                inner_times = json_data.get("inner_times")
+                not_one_inners_times.append(np.median(inner_times))
+
             threads.append(thread)
 
-            num_simulation = json_data.get("num_simulations")
             num_simulations.append(num_simulation)
 
             total_time = json_data.get("total_time")
@@ -48,15 +79,15 @@ def main():
 
             # for outer_time in outer_times:
             outer_times = json_data.get("outer_times")
-            outers_max.append(np.median(outer_times))
+            outers_max.append(max(outer_times))
 
             # for inner_time in inner_times:
             inner_times = json_data.get("inner_times")
-            inners_max.append(np.median(inner_times))
+            inners_max.append(max(inner_times))
 
             ax_0.scatter(thread, num_simulation, total_time)
-            ax_1.scatter(thread, num_simulation, np.median(outer_times))
-            ax_2.scatter(thread, num_simulation, np.median(inner_times))
+            ax_1.scatter(thread, num_simulation, max(outer_times))
+            ax_2.scatter(thread, num_simulation, max(inner_times))
 
     # ax_0.plot_trisurf(np.array(threads), np.array(num_simulations), np.array(total_times), cmap=cm.jet)
     ax_0.tricontourf(np.array(threads), np.array(num_simulations), np.array(total_times), zdir='z', offset=0, cmap=cm.coolwarm)
@@ -85,10 +116,16 @@ def main():
     ax_2.dist = 15
     ax_2.view_init(30, -45)
 
-
     fig_0.savefig('total_times.png')
     fig_1.savefig('outer_times.png')
     fig_2.savefig('inner_times.png')
+
+    print(compare_times(one_total_times, not_one_total_times))
+
+
+def compare_times(one_time, end_time):
+    factor = max(one_time) / max(end_time)
+    return factor
 
 if __name__ == '__main__':
     main()
