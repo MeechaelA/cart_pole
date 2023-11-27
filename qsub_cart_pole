@@ -1,0 +1,8 @@
+#!/bin/bash
+#$ -cwd -V
+#$ -l mem_free=1G,h_vmem=1G
+#$ -q parallel.q
+#$ -pe smp 8
+#$ -R y
+export OMP_NUM_THREADS=8
+build/cart_pole test 8 1 0.01 10.0 10.0
